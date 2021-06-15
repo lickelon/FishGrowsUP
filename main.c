@@ -585,9 +585,9 @@ void ProcessMobs(int frame)
         {
             int index = mobs[i].pq[1].fish_index;
             int evaluate = mobs[i].pq[1].evaluate;
-            PopPQ(i);
             int direction = GetDirection(i, index); //remove when pq done
             ProcessMovementMob(i, direction);
+            PopPQ(i);
             mobs[i].pq_clear_flag -= 1;
             if(mobs[i].pq_clear_flag <= 0) {
                 PushAll(i);

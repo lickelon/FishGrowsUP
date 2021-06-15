@@ -24,7 +24,7 @@
 #define ACCEL 2  //주인공의 이동 시 가속도
 #define NOTHING 0
 #define QUIT 'q'
-#define FPS 12 //Run함수가 1초에 실행되는 횟수
+#define FPS 18 //Run함수가 1초에 실행되는 횟수
 #define INPUT_PER_FRAME 6 //입력을 처리하는 프레임 간격
 #define MAX_SPEED 3 //이동시 최대 속도
 #define NAMELEN 30 //이름 입력시 최대 길이
@@ -174,7 +174,7 @@ void Play();
 void Run(int sig);
 
 //몹과 플레이어간의 충돌을 다루는 함수
-void ProcessConflict();
+void ProcessFeed();
 
 /*Ranking Functions*/
 //랭킹을 보여주는 함수

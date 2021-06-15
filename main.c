@@ -22,10 +22,6 @@ int main(void)
         {
         case MENU_PLAY:
             Play();
-            FreeAll();
-            endwin();
-	        system("clear");
-            return 0;
             break;
         case MENU_RANK:
             Rank();
@@ -46,6 +42,8 @@ int main(void)
 void Init()
 {
     //게임 실행을 위한 변수 초기화
+    InitField();
+
     current_frame = 0;
     game_over = 0;
     score = 0;
@@ -56,7 +54,6 @@ void Init()
     srand(time(NULL));
 
     InitPlayer();
-    InitField();
     InitScreen();
 
     timed_out = 0;
@@ -108,7 +105,7 @@ void InitField()
         int x = rand() % (WIDTH*2);
         int y = rand() % (HEIGHT*2);
 
-        field[y][x] = -2;
+        field[y][x] = 3;
     }
 
     int num_of_branch = rand() % 3 + 7;
@@ -120,7 +117,7 @@ void InitField()
     {
         for(int j = 0; j < WIDTH*2; j++)
         {
-            if(field[i][j] == -1 || field[i][j] == -2) continue;
+            if(field[i][j] == 2 || field[i][j] == 3) continue;
             if((i == 0 || field[i-1][j] == 1) || (j == 0 || field[i][j-1] == 1))
             {
                 field[i][j] = 1;
@@ -131,7 +128,7 @@ void InitField()
     {
         for(int j = WIDTH*2-1; j >= 0; j--)
         {
-            if(field[i][j] == -1 || field[i][j] == -2) continue;
+            if(field[i][j] == 2 || field[i][j] == 3) continue;
             if((i == HEIGHT*2-1 || field[i+1][j] == 1) || (j == WIDTH*2-1 || field[i][j+1]))
             {
                 field[i][j] = 1;
@@ -212,10 +209,10 @@ void AddBranchToField(char field[HEIGHT*2][WIDTH*2], COORD rocks[20], int size)
 {
     for(int i = 0; i < size; i++)
     {
-        field[rocks[i].y][rocks[i].x] = -1;
-        field[rocks[i].y+1][rocks[i].x] = -1;
-        field[rocks[i].y][rocks[i].x+1] = -1;
-        field[rocks[i].y+1][rocks[i].x+1] = -1;
+        field[rocks[i].y][rocks[i].x] = 2;
+        field[rocks[i].y+1][rocks[i].x] = 2;
+        field[rocks[i].y][rocks[i].x+1] = 2;
+        field[rocks[i].y+1][rocks[i].x+1] = 2;
     }
 }
 
@@ -306,12 +303,12 @@ void DrawField() // minimap을 받아 처리해야 함
 	for(j=0;j<HEIGHT;j++){
 		move(j+1,1);
 		for(i=0;i<WIDTH;i++){
-			if(field[j+(int)(minimap >= 2)*HEIGHT][i+(int)(minimap % 3 == 0)*WIDTH]==-1){
+			if(field[j+(int)(minimap >= 2)*HEIGHT][i+(int)(minimap % 3 == 0)*WIDTH]==2){
 				attron(A_REVERSE);
-				printw(" ");
+				printw("+");
 				attroff(A_REVERSE);
 			}
-			else if(field[j+(int)(minimap >= 2)*HEIGHT][i+(int)(minimap % 3 == 0)*WIDTH]==-2) {
+			else if(field[j+(int)(minimap >= 2)*HEIGHT][i+(int)(minimap % 3 == 0)*WIDTH]==3) {
                 attron(COLOR_PAIR(6));
                 printw("#");
                 attroff(COLOR_PAIR(6));
@@ -421,8 +418,8 @@ int CheckToMove(char field[HEIGHT*2][WIDTH*2], int y, int x)
             if(part.shape == ' ') continue;
             if(y + i - 1 < 0 || y + i - 1 > HEIGHT*2 - 1) return 0;
             if(x + j - 2 < 0 || x + j - 2 > WIDTH*2 - 1) return 0;
-            if(field[y+i-1][x+j-2] == -1) return 0;
-            if(field[y+i-1][x+j-2] == -2) return -1;
+            if(field[y+i-1][x+j-2] == 2) return 0;
+            if(field[y+i-1][x+j-2] == 3) return -1;
         }
     }
     return 1;
@@ -554,6 +551,7 @@ void Play()
 	move(HEIGHT/2,WIDTH/2-4);
 	printw("GameOver!!");
 	refresh();
+    sleep(1);
 	getch();
 	NewRank(score);
 }
@@ -568,16 +566,17 @@ void Run(int sig)
 
     ProcessPlayer(current_frame);
     ProcessMobs(current_frame);
-    ProcessConflict();
+    ProcessFeed();
 
     PrintScore();
     DrawNitro();
+
     timed_out = 0;
 }
 
 void ProcessMobs(int frame)
 {
-    if(mob_count < fish_size + 7)
+    if(mob_count < fish_size * 2 + 7)
     {
         GenerateMob();
     }
@@ -591,7 +590,7 @@ void ProcessMobs(int frame)
             int direction = GetDirection(i, index); //remove when pq done
             ProcessMovementMob(i, direction);
             mobs[i].pq_clear_flag -= 1;
-            if(!mobs[i].pq_clear_flag) {
+            if(mobs[i].pq_clear_flag <= 0) {
                 PushAll(i);
             }
             else {
@@ -601,7 +600,7 @@ void ProcessMobs(int frame)
             //printw("FISH %2d: direction=%3d, flag=%d, index=%d", i, direction, index);
         }
 
-        if(mobs[i].speed.x < -4 || mobs[i].speed.x > 4 || mobs[i].speed.y < -4 || mobs[i].speed.y > 4) //에러 핸들링
+        if(mobs[i].speed.x < -MAX_SPEED || mobs[i].speed.x > MAX_SPEED || mobs[i].speed.y < -MAX_SPEED || mobs[i].speed.y > MAX_SPEED) //에러 핸들링
         {
             mobs[i].speed.x = 0;
             mobs[i].speed.y = 0;
@@ -628,7 +627,7 @@ void ProcessMobs(int frame)
         }
 
         /*필드 밖으로 나가지 않도록 처리, 더 발전한다면 CheckToMove()에 합쳐야 함*/
-        if(!CheckToMoveMob(field, temp.y, temp.x, mobs[i].size, mobs[i].state)) return;
+        if(!CheckToMoveMob(field, temp.y, temp.x, mobs[i].size, mobs[i].state)) continue;
 
         mobs[i].pos.x = temp.x;
         mobs[i].pos.y = temp.y;
@@ -663,7 +662,7 @@ int CheckToMoveMob(char field[HEIGHT*2][WIDTH*2], int y, int x, int size, int st
             if(part.shape == ' ') continue;
             if(y + i - 1 < 0 || y + i - 1 > HEIGHT*2 - 1) return 0;
             if(x + j - 2 < 0 || x + j - 2 > WIDTH*2 - 1) return 0;
-            if(field[y+i-1][x+j-2] == -1) return 0;
+            if(field[y+i-1][x+j-2] == 2) return 0;
             if(field[y+i-1][x+j-2] == 0) return 0;
         }
     }
@@ -930,7 +929,7 @@ int GetDirection(int current_index, int opponent_index)
     }
 }
 
-void ProcessConflict()
+void ProcessFeed()
 {
     /*first with player*/
     for(int i = 0; i < mob_count; i++)

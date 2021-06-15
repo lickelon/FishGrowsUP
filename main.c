@@ -42,6 +42,7 @@ int main(void)
 void Init()
 {
     //게임 실행을 위한 변수 초기화
+    srand(time(NULL));
     InitField();
 
     current_frame = 0;
@@ -50,8 +51,6 @@ void Init()
 
     mob_count = 0;
     for(int i = 0; i < 6; i++) count_by_size[i] = 0;
-
-    srand(time(NULL));
 
     InitPlayer();
     InitScreen();
